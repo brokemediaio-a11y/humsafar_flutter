@@ -9,27 +9,39 @@ class FirestoreService {
   CollectionReference get _usersCollection =>
       _firestore.collection('users');
 
-  /// Save user data to Firestore
-  /// Collections are created automatically when you write data
-  Future<bool> saveUser(UserModel user) async {
-    try {
-      // Add timeout to prevent infinite retries
-      await _usersCollection.doc(user.uid).set(user.toMap()).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Firestore operation timed out');
-        },
-      );
-      return true;
-    } catch (e) {
-      debugPrint('Error saving user: $e');
-      // Check if it's a database not found error
-      final errorStr = e.toString();
-      if (errorStr.contains('NOT_FOUND') || errorStr.contains('does not exist')) {
-        debugPrint('Firestore database does not exist. Please create it in Firebase Console.');
+  /// Save user data to Firestore.
+  /// Returns null on success, or an error code/message on failure.
+  /// Uses 60s timeout and one retry on timeout/network errors for flaky connections.
+  Future<String?> saveUser(UserModel user) async {
+    const timeout = Duration(seconds: 60);
+
+    Future<String?> trySave() async {
+      try {
+        await _usersCollection.doc(user.uid).set(user.toMap()).timeout(timeout);
+        return null;
+      } on FirebaseException catch (e) {
+        debugPrint('Error saving user (code=${e.code}): ${e.message}');
+        return e.code;
+      } catch (e, stackTrace) {
+        debugPrint('Error saving user (raw): $e');
+        debugPrint('Stack: $stackTrace');
+        final msg = e.toString().toLowerCase();
+        if (msg.contains('permission') || msg.contains('denied')) return 'permission-denied';
+        if (msg.contains('not found') || msg.contains('not-found') || msg.contains('nonexistent')) return 'not-found';
+        if (msg.contains('unavailable') || msg.contains('network') || msg.contains('connection')) return 'unavailable';
+        if (msg.contains('certificate') || msg.contains('sha') || msg.contains('app not authorized') || msg.contains('api_key')) return 'app-not-authorized';
+        if (msg.contains('timeout') || msg.contains('timed out')) return 'timeout';
+        return 'unknown';
       }
-      return false;
     }
+
+    String? result = await trySave();
+    if (result != null && (result == 'timeout' || result == 'unavailable')) {
+      debugPrint('Retrying saveUser once after $result...');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      result = await trySave();
+    }
+    return result;
   }
 
   /// Get user data from Firestore

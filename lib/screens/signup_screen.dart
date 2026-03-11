@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
 import '../models/user_model.dart';
 import '../utils/image_utils.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,7 +25,6 @@ class _SignupScreenState extends State<SignupScreen>
   final _cnicController = TextEditingController();
   final _studentIdController = TextEditingController();
   final _authService = AuthService();
-  final _firestoreService = FirestoreService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -296,29 +294,7 @@ class _SignupScreenState extends State<SignupScreen>
       return;
     }
 
-    // Check if student ID or CNIC already exists
-    final studentIdExists = await _firestoreService.studentIdExists(
-      _studentIdController.text.trim(),
-    );
-    if (!mounted) return;
-    if (studentIdExists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Student ID already exists')),
-      );
-      return;
-    }
-
-    final cnicExists = await _firestoreService.cnicExists(
-      _cnicController.text.trim(),
-    );
-    if (!mounted) return;
-    if (cnicExists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CNIC already exists')),
-      );
-      return;
-    }
-
+    // Duplicate studentId/CNIC check is done inside AuthService after auth (so Firestore rules allow it)
     setState(() => _isLoading = true);
 
     final userData = UserModel(

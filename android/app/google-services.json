@@ -37,6 +37,13 @@
             {
               "client_id": "819096727879-6b653c10r0j5u0km2439lvp4nelcg4ug.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "819096727879-84q8oponksl8g28bi81bt4p64bpu4s0h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.humsafarApp"
+              }
             }
           ]
         }
